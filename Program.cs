@@ -8,10 +8,14 @@ namespace JobcanAutoPush
 	{
 		static async Task Main(string[] args)
 		{
-			if (JapanHoliday.JapanHoliday.IsHoliday(DateTime.Today))
+#if !DEBUG
+			var today = DateTime.Today;
+			if (today.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+				|| JapanHoliday.JapanHoliday.IsHoliday(today))
 			{
 				return;
 			}
+#endif
 
 			await PushJobcan();
 
@@ -22,14 +26,19 @@ namespace JobcanAutoPush
 		{
 			IWebDriver driver = new ChromeDriver(ChromeDriverService.CreateDefaultService());
 			driver.Navigate().GoToUrl("https://id.jobcan.jp/users/sign_in?app_key=atd");
+			await Task.Delay(1000);
 
 			// ログイン
 			driver.FindElement(By.Name("user[email]")).SendKeys(Credentials.MailAddr);
 			driver.FindElement(By.Name("user[password]")).SendKeys(Credentials.Password);
 			driver.FindElement(By.Name("commit")).Click();
+			await Task.Delay(1000);
 
 			// 打刻PUSH
+#if !DEBUG
 			driver.FindElement(By.Name("adit_item")).Click();
+			await Task.Delay(1000);
+#endif
 
 			// 工数入力
 			if (driver.FindElement(By.Id("working_status")).Text.Trim() == "退室中")
@@ -43,6 +52,7 @@ namespace JobcanAutoPush
 				templateList.SelectByIndex(1);
 
 				driver.FindElement(By.Id("save")).Click();
+				await Task.Delay(1000);
 			}
 
 			driver.Quit();
